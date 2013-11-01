@@ -1,7 +1,7 @@
 /**
  * 
  */
-package paa.t2;
+package puzzle;
 
 import datastructures.Graph;
 import datastructures.Node;

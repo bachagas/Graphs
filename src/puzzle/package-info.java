@@ -5,4 +5,4 @@
  * @author macurvello
  *
  */
-package paa.t2;
+package puzzle;
