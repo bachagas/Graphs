@@ -162,6 +162,7 @@ public class Graph {
 
 	// Mark a given node as "visited" in a graph traversal
 	private void markVisited(Node node) {
+		//System.out.println(node);
 		this.visitedSet.add(node);
 	}
 	
@@ -176,7 +177,7 @@ public class Graph {
 		// Iterate through all nodes in the graph, starting from "s"
 		Set<Node> nodeSet = this.getNodes();
 		Iterator<Node> it = nodeSet.iterator();
-		while ( it.hasNext() ){
+		while ( it.hasNext() ) {
 			Node next = null;
 			if (ccNumber == 0) next = s; // this is to force start from "s"
 			else next = it.next();
@@ -211,6 +212,50 @@ public class Graph {
 				}
 			}
 		} else dfsTree.addNode(node);
+	}
+	
+	// Performs a Breadth-First Search (BFS) in the graph and returns the BFS-Forest.
+	// The BFS-Forest produced is as a List of other Graphs, which are the disconnected BFS-Trees produced by the traversal
+	public List<Graph> bfs(Node s) {
+		//Initialize and reset traversal control structures:
+		List<Graph> bfsForest = new LinkedList<Graph>();
+		this.visitedSet = new HashSet<Node>();
+		this.ccNumber = 0;
+		LinkedList<Node> queue = new LinkedList<Node>();
+
+		// Iterate through all nodes in the graph, starting from "s"
+		Set<Node> nodeSet = this.getNodes();
+		Iterator<Node> it = nodeSet.iterator();
+		while ( it.hasNext() ) {
+			Node next = null; //it.next();
+			if (ccNumber == 0) next = s; // this is to force to start from "s"
+			else next = it.next();
+			boolean explored = this.isVisited(next);
+			if( !explored ) {
+				this.markVisited(next);
+				queue.add(next);
+				this.ccNumber++;
+				Graph bfsTree = new Graph("CC"+ccNumber, true); // Obs: BFS-Tree is directed for the purpose of clarity	
+				while ( !queue.isEmpty() ) {
+					Node u = queue.remove();				
+					Set<Node> neighbors = this.getNeighbors(u);
+					if ( neighbors != null ) {
+						Iterator<Node> itNeighbors = neighbors.iterator();
+						while ( itNeighbors.hasNext() ) {
+							Node v = itNeighbors.next();
+							boolean visited = this.isVisited(v);
+							if( !visited ) {
+								bfsTree.addEdge(u, v);
+								this.markVisited(v);
+								queue.add(v);
+							}
+						}
+					} else bfsTree.addNode(u);
+				}
+				bfsForest.add(bfsTree);
+			}
+		}
+		return bfsForest;
 	}
 	
 	
@@ -263,6 +308,31 @@ public class Graph {
 			Graph dfsTree = it.next();
 			//System.out.println(dfsTree.getN() + " node(s) and " + dfsTree.getM() + " edge(s).");
 			dfsTree.println();
+		}
+		System.out.println();
+		
+		System.out.println("*** Tests for BFS traversal: ***");
+		//Set<Node> allNodes = myGraph.getNodes();
+		Iterator<Node> itNodes2 = allNodes.iterator();
+		while ( itNodes2.hasNext() ){
+			Node v = itNodes2.next();
+			List<Graph> bfsForest = myGraph.bfs(v);
+			
+			System.out.println("BFS starting at node " + v + " result is:");
+			Iterator<Graph> it2 = bfsForest.iterator();
+			while (it2.hasNext()) {
+				Graph bfsTree = it2.next();
+				System.out.println(bfsTree);
+			}
+		}
+		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components.");
+		System.out.println("Each one has:");
+		List<Graph> bfsForest = myGraph.bfs(node5);
+		Iterator<Graph> it3 = bfsForest.iterator();
+		while (it3.hasNext()) {
+			Graph bfsTree = it3.next();
+			//System.out.println(dfsTree.getN() + " node(s) and " + dfsTree.getM() + " edge(s).");
+			bfsTree.println();
 		}
 		System.out.println();
 	}

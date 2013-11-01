@@ -12,8 +12,6 @@ The project is organized in the following packages:
   - Node: a generic graph node
   - Graph: a generic graph stored as an adjacency list. Provides basic methods for graph traversal (DFS and BFS) and some other derived and classical problems
 
-2) test: classes for unit testing
+2) puzzle: classes for the classic "toy problem" of a 3 x 3 puzzle board game
 
-3) puzzle: classes for classic "toy problems" and exercises
-
-4) utils: some ohter utilities we needed.
+3) utils: some other utilities and stuff we needed.
