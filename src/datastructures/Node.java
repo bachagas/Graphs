@@ -3,18 +3,23 @@ package datastructures;
 //A Node representing a game configuration with a label identifier
 public class Node {
 	
-	protected String label;
+	protected String id;
 	
-	public Node(String nodeLabel) {
-		this.label = nodeLabel;
+	public String getId() {
+		return this.id;
 	}
 	
-	public boolean equals(Node n2) {
-		return this.label.equals(n2.label);
+	public Node(String nodeLabel) {
+		this.id = nodeLabel;
+	}
+	
+	public boolean equals(Object anObject) {
+		Node temp = (Node) anObject;
+		return this.id.equals(temp.getId());
 	}
 	
 	public String toString() {
-		return this.label;
+		return this.id;
 	}
 	
 }

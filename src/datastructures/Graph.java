@@ -18,6 +18,8 @@ public class Graph {
 	// keys of the map are the graph's nodes and its values are each a set of neighbors of that key-node.
 	protected String label;
 	private Map<Node, Set<Node>> graphMap;
+	private Map<String, Node> nodeIds; //auxiliary structure to find nodes by its Ids
+	private Map<String, Set<String>> idsMap; //auxiliary structure to check for duplicate nodes
 
 	// Indicates graph mode: undirected (default) or directed
 	private boolean undirected = true;
@@ -30,6 +32,8 @@ public class Graph {
 	public Graph(String _label) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>();
+		this.nodeIds = new HashMap<String, Node>();
+		this.idsMap = new HashMap<String, Set<String>>();
 		this.nNodes = 0;
 		this.mEdges = 0;
 	}
@@ -38,17 +42,21 @@ public class Graph {
 	public Graph( String _label, int size ) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>( size );
+		this.nodeIds = new HashMap<String, Node>();
+		this.idsMap = new HashMap<String, Set<String>>( size );
 		this.nNodes = 0;
 		this.mEdges = 0;
 	}
 	
 	// Creates a directed empty graph
-	public Graph( String _label, boolean isDirected ) {
+	public Graph( String _label, boolean directed ) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>();
+		this.nodeIds = new HashMap<String, Node>();
+		this.idsMap = new HashMap<String, Set<String>>();
 		this.nNodes = 0;
 		this.mEdges = 0;
-		this.undirected = !isDirected;
+		this.undirected = !directed;
 	}
 	
 	// Creates a graph from a Map structure that is its adjacency list
@@ -62,36 +70,47 @@ public class Graph {
 		}
 	}*/
 	
-	// Adds a node to the graph, if it is not already in it
+	// Adds a node to the graph, if it is not already in it; ignores new node otherwise
 	public void addNode( Node newNode ) {
-		//TODO: For some reason, it is not working as expected, and will return false if two nodes have the same id
-		//      but are different objects, what would be not desirable...
-		boolean contains = this.graphMap.containsKey(newNode);
+		boolean contains = this.nodeIds.containsKey(newNode.getId());
 		if ( !contains ) {
 			this.graphMap.put(newNode, null);
+			this.nodeIds.put(newNode.getId(), newNode);
+			this.idsMap.put(newNode.getId(), null);
 			this.nNodes++;
 		}
 	}
 	
-	// Adds an edge to the graph. Creates new nodes "from" and "to" if needed.
+	// Adds an edge to the graph, if it is not already in it; ignores new edge otherwise.
+	// Creates new nodes "from" and "to" if needed.
 	public void addEdge( Node fromNode, Node toNode ) {
 		this.addNode(fromNode);
 		Set<Node> fromNeighbors = this.graphMap.get(fromNode);
+		Set<String> fromNeighborsIds = this.idsMap.get(fromNode.getId());
 		if( fromNeighbors == null ) { // fromNode has no neighbor yet			
 			fromNeighbors = new HashSet<Node>();
 			this.graphMap.put(fromNode, fromNeighbors);
+			fromNeighborsIds = new HashSet<String>();
+			this.idsMap.put(fromNode.getId(), fromNeighborsIds);
 		}
-		this.addNode(toNode);
-		// Insert 'from'-'to' edge into dfsTree
-		fromNeighbors.add(toNode);
-		this.mEdges++;
-		if (this.undirected) { // creates the reverse edge
-			Set<Node> toNeighbors = this.graphMap.get(toNode);
-			if( toNeighbors == null ) { // toNode has no neighbor yet
-				toNeighbors = new HashSet<Node>();
-				this.graphMap.put(toNode, toNeighbors);
+		if ( !fromNeighborsIds.contains(toNode.getId()) ) {
+			this.addNode(toNode);
+			// Insert 'from'-'to' edge into dfsTree
+			fromNeighbors.add(toNode);
+			fromNeighborsIds.add(toNode.getId());
+			this.mEdges++;
+			if (this.undirected) { // creates also the reverse edge for undirected graphs
+				Set<Node> toNeighbors = this.graphMap.get(toNode);
+				Set<String> toNeighborsIds = this.idsMap.get(toNode.getId());
+				if( toNeighbors == null ) { // toNode has no neighbor yet
+					toNeighbors = new HashSet<Node>();
+					this.graphMap.put(toNode, toNeighbors);
+					toNeighborsIds = new HashSet<String>();
+					this.idsMap.put(toNode.getId(), toNeighborsIds);
+				}
+				toNeighbors.add(fromNode);
+				toNeighborsIds.add(fromNode.getId());
 			}
-			toNeighbors.add(fromNode);
 		}
 	}
 	
@@ -115,6 +134,11 @@ public class Graph {
 		return this.mEdges;
 	}
 
+	// Returns an specific node of the graph by its id or null if not existent 
+	public Node getNodeById(String id) {
+			return nodeIds.get(id);
+		}
+	
 	// Returns a set with all the nodes of the graph
 	public Set<Node> getNodes() {
 		Set<Node> keySet = this.graphMap.keySet();
@@ -143,7 +167,7 @@ public class Graph {
 
 	// Produces true if graph contains a given node, false otherwise
 	public boolean contains(Node node) {
-		return this.graphMap.containsKey(node);
+		return this.idsMap.containsKey(node.getId());
 	}
 	
 	// ************** Traversal Algorithms structures and functions: **************
@@ -181,13 +205,11 @@ public class Graph {
 			Node next = null;
 			if (ccNumber == 0) next = s; // this is to force start from "s"
 			else next = it.next();
-			//System.out.println(next);
 			boolean visited = this.isVisited(next);
 			if( !visited ) {
 				this.ccNumber++;
 				Graph dfsTree = new Graph("CC"+ccNumber, true); // Obs: DFS-Tree is directed for the purpose of clarity
 				dfsVisit(next, dfsTree);
-				//System.out.println(dfsTree);
 				if ( !dfsTree.isEmpty() ) dfsForest.add(dfsTree);
 			}
 		}
@@ -227,7 +249,7 @@ public class Graph {
 		Set<Node> nodeSet = this.getNodes();
 		Iterator<Node> it = nodeSet.iterator();
 		while ( it.hasNext() ) {
-			Node next = null; //it.next();
+			Node next = null;
 			if (ccNumber == 0) next = s; // this is to force to start from "s"
 			else next = it.next();
 			boolean explored = this.isVisited(next);
@@ -257,7 +279,55 @@ public class Graph {
 		}
 		return bfsForest;
 	}
-	
+
+	// Finds the minimum path between nodes start and end performing a Breadth-First Search (BFS).
+	// Returns a List of Nodes which are the path, or null if there is no path between the two given nodes.
+	// Obs: The size of the List produced - 1 will be the distance between the two nodes.
+	public List<Node> bfsPath(Node start, Node end) {
+		//Initialize and reset traversal control structures:
+		//List<Graph> bfsForest = new LinkedList<Graph>();
+		this.visitedSet = new HashSet<Node>();
+		//this.ccNumber = 0;
+		LinkedList<Node> queue = new LinkedList<Node>();
+		Map<Node,Node> fathers = new HashMap<Node,Node>();
+		boolean found = false;
+
+		this.markVisited(start);
+		fathers.put(start,null);
+		queue.add(start);
+		//this.ccNumber++;
+		//Graph bfsTree = new Graph("CC"+ccNumber, true); // Obs: BFS-Tree is directed for the purpose of clarity	
+		while ( !queue.isEmpty() && !found ) {
+			Node u = queue.remove();
+			if ( u.equals(end) ) found = true;
+			else {
+				Set<Node> neighbors = this.getNeighbors(u);
+				if ( neighbors != null ) {
+					Iterator<Node> itNeighbors = neighbors.iterator();
+					while ( itNeighbors.hasNext() ) {
+						Node v = itNeighbors.next();
+						boolean visited = this.isVisited(v);
+						if( !visited ) {
+							//bfsTree.addEdge(u, v);
+							fathers.put(v,u);
+							this.markVisited(v);
+							queue.add(v);
+						}
+					}
+				}// else bfsTree.addNode(u);
+			}
+		}
+		//bfsForest.add(bfsTree);
+		if ( found ) {
+			LinkedList<Node> result = new LinkedList<Node>();
+			Node father = end;
+			while ( father != null ) {
+				result.push(father);
+				father = fathers.get(father);
+			}
+			return result;
+		} else return null;
+	}
 	
 	// Basic unit test "check-expects":
 	public static void main(String[] args) {
@@ -281,7 +351,10 @@ public class Graph {
 		Node node5 = new Node("E");
 		Node node6 = new Node("F");
 		myGraph.addEdge(node5, node6);
-		//myGraph.addEdge(node5, new Node("F")); --> TODO: Fix the insertion of a repeated node in the graph in this case
+		//Should not replicate nodes and edges
+		myGraph.addNode(new Node("F"));
+		myGraph.addEdge(node5, node6);
+		myGraph.addEdge(node5, new Node("F"));
 		System.out.println(myGraph);
 		myGraph.println();
 		System.out.println();
@@ -333,6 +406,28 @@ public class Graph {
 			Graph bfsTree = it3.next();
 			//System.out.println(dfsTree.getN() + " node(s) and " + dfsTree.getM() + " edge(s).");
 			bfsTree.println();
+		}
+		System.out.println();
+		
+		System.out.println("*** Tests for Path finding and distance through BFS: ***");
+		itNodes = myGraph.getNodes().iterator();
+		while ( itNodes.hasNext() ){
+			Node u = itNodes.next();
+			itNodes2 = myGraph.getNodes().iterator();
+			while ( itNodes2.hasNext() ){
+				Node v = itNodes2.next();
+				List<Node> path = myGraph.bfsPath(u,v);
+				if ( path == null ) {
+					System.out.println("Node " + u + " cannot reach " + v + "!");
+				} else {
+					System.out.println("Distance from " + u + " to " + v + " is " + (path.size()-1) + ":");
+					Iterator<Node> itNodes3 = path.iterator();
+					while (itNodes3.hasNext()) {
+						Node tempNode = itNodes3.next();
+						System.out.println(tempNode);
+					}
+				}
+			}
 		}
 		System.out.println();
 	}
