@@ -154,10 +154,19 @@ public class Game extends Graph {
 		startTime = new Date();
 		System.out.println(startTime + " (" + startTime.getTime() + ")> Looking for maximum distance to solution by BFS:");
 		System.out.println("Looking for path with the maximum distance..."); // Obs: Use -Xms<maximum your machine will permit>g to increase JVM heap size for a better performance"
-		Iterator<Node> nodes = game.getNodes().iterator();
+		Graph halfGame = null;
+		Board solution = (Board) game.getNodeById(Board.SOLUTION.getId());
+		for (Iterator<Graph> CCs = game.getCCs().iterator(); CCs.hasNext(); ) {
+			halfGame = CCs.next();
+			if ( halfGame.contains(solution) ) {
+				System.out.println("Solution is in Connected Component " + halfGame);
+				break;
+			}
+		}
+		Iterator<Node> nodes = halfGame.getNodes().iterator();
 		LinkedList<Node> maxPath = new LinkedList<Node>(); int count = 0;
 		while ( nodes.hasNext() ) {
-			LinkedList<Node> path = game.bfsPath(nodes.next(),game.getNodeById(Board.SOLUTION.getId()));
+			LinkedList<Node> path = halfGame.bfsPath(nodes.next(),solution);
 			if (path != null)
 				if ( path.size() > maxPath.size() )
 					maxPath = (LinkedList<Node>) path;
