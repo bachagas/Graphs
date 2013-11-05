@@ -9,8 +9,8 @@ public class Node {
 		return this.id;
 	}
 	
-	public Node(String nodeLabel) {
-		this.id = nodeLabel;
+	public Node(String nodeId) {
+		this.id = nodeId;
 	}
 	
 	public boolean equals(Object anObject) {
