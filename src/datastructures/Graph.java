@@ -1,5 +1,6 @@
 package datastructures;
 
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -7,9 +8,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
 
 /*
- * A graph stored as an adjacency list with all nodes and edges of the graph.
+ * A Graph stored as an adjacency list with all nodes and edges of the graph.
  * Provides methods for traversing the graph with depth-first search (DFS) and breadth-first search (BFS).
  */
 public class Graph {
@@ -21,8 +23,7 @@ public class Graph {
 	// The main adjacency list of the graph:
 	// keys of the map are the graph's nodes and its values are each a set of neighbors of that key-node. 
 	private Map<Node, Set<Node>> graphMap;
-	private Map<String, Node> nodeIds; //auxiliary structure to find nodes by its Ids
-	private Map<String, Set<String>> idsMap; //auxiliary structure to check for duplicate nodes and edges
+	private Map<String, Node> nodesMap; //auxiliary structure to check and prevent nodes with same Id's
 
 	// Indicates graph mode: undirected (default) or directed
 	private boolean undirected = true;
@@ -37,8 +38,7 @@ public class Graph {
 	public Graph(String _label) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>();
-		this.nodeIds = new HashMap<String, Node>();
-		this.idsMap = new HashMap<String, Set<String>>();
+		this.nodesMap = new HashMap<String, Node>();
 		this.nNodes = 0;
 		this.mEdges = 0;
 	}
@@ -47,8 +47,7 @@ public class Graph {
 	public Graph( String _label, int size ) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>( size );
-		this.nodeIds = new HashMap<String, Node>( size );
-		this.idsMap = new HashMap<String, Set<String>>( size );
+		this.nodesMap = new HashMap<String, Node>( size );
 		this.nNodes = 0;
 		this.mEdges = 0;
 	}
@@ -57,41 +56,37 @@ public class Graph {
 	public Graph( String _label, boolean directed ) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>();
-		this.nodeIds = new HashMap<String, Node>();
-		this.idsMap = new HashMap<String, Set<String>>();
+		this.nodesMap = new HashMap<String, Node>();
 		this.nNodes = 0;
 		this.mEdges = 0;
 		this.undirected = !directed;
 	}
 	
-	// Adds a node to the graph, if it is not already in it; ignores new node otherwise
-	public void addNode( Node newNode ) {
+	// Adds a node to the graph, if it is not already in it. Checks for duplicate nodes by its id and 
+	// returns new node added, or existent if there was already a node with the same id in the graph.
+	public Node addNode( Node newNode ) {
 		if ( !this.contains(newNode) ) {
 			this.graphMap.put(newNode, new HashSet<Node>());
-			this.nodeIds.put(newNode.getId(), newNode);
-			this.idsMap.put(newNode.getId(), new HashSet<String>());
+			this.nodesMap.put(newNode.getId(), newNode);
 			this.nNodes++;
+			return newNode;
 		}
+		else return this.nodesMap.get(newNode.getId());
 	}
 	
 	// Adds an edge to the graph, if it is not already in it; ignores new edge otherwise.
 	// Creates new nodes "from" and "to" if needed.
 	public void addEdge( Node fromNode, Node toNode ) {
 		if ( !this.contains(fromNode,toNode) ) {
-			this.addNode(fromNode);
+			fromNode = this.addNode(fromNode);
+			toNode = this.addNode(toNode);
 			Set<Node> fromNeighbors = this.graphMap.get(fromNode);
-			Set<String> fromNeighborsIds = this.idsMap.get(fromNode.getId());
-			if ( !fromNeighborsIds.contains(toNode.getId()) ) {
-				this.addNode(toNode);
-				// Insert 'from'-'to' edge into dfsTree
+			if ( !fromNeighbors.contains(toNode) ) {
 				fromNeighbors.add(toNode);
-				fromNeighborsIds.add(toNode.getId());
 				this.mEdges++;
 				if (this.undirected) { // creates also the reverse edge for undirected graphs
 					Set<Node> toNeighbors = this.graphMap.get(toNode);
-					Set<String> toNeighborsIds = this.idsMap.get(toNode.getId());
 					toNeighbors.add(fromNode);
-					toNeighborsIds.add(fromNode.getId());
 				}
 			}
 		}
@@ -99,11 +94,16 @@ public class Graph {
 	
 	// Prints a human-readable text representing the graph
 	public void println() {
-		System.out.println("Graph " + this.label + " is " + this.graphMap.toString() + " with " + this.getN() + " node(s) and " + this.getM() + " edge(s).");
+		System.out.println(this.stringfy());
 	}
 
-	// Produces a human-readable string representing the graph
+	// Produces an human-readable string with global useful information about the graph
 	public String toString() {
+		return this.getLabel() + "={" + this.getN() + " node(s)," + this.getM() + " edge(s)}";
+	}
+	
+	// Produces a human-readable string representing the graph
+	public String stringfy() {
 		return this.label + "=" + this.graphMap.toString();
 	}
 	
@@ -124,8 +124,8 @@ public class Graph {
 
 	// Returns an specific node of the graph by its id or null if not existent 
 	public Node getNodeById(String id) {
-			return nodeIds.get(id);
-		}
+			return nodesMap.get(id);
+	}
 	
 	// Returns a set with all the nodes of the graph
 	public Set<Node> getNodes() {
@@ -138,32 +138,22 @@ public class Graph {
 		Set<Node> neighbors = this.graphMap.get(node);
 		return neighbors;
 	}
-	
-	// Returns the number of connected components of the graph or -1 if the graph has never been traversed
-	public int getNumberOfCCs() {
-		if ( !this.visitedSet.isEmpty() ) {
-			return this.ccNumber;
-		} else return -1;
-	}
-	
-	// Produces true if graph is empty	
-	public boolean isEmpty() {
-		Set<Node> nodeSet = this.getNodes();
-		boolean empty = nodeSet.isEmpty();
-		return empty;
-	}
 
 	// Produces true if graph contains a given node, false otherwise
 	public boolean contains(Node aNode) {
-		return this.nodeIds.containsKey(aNode.getId());
+		return this.nodesMap.containsKey(aNode.getId());
 	}
 	
 	// Produces true if graph contains given edge, false otherwise
 	private boolean contains(Node fromNode, Node toNode) {
-		if ( this.nodeIds.containsKey(fromNode.getId()) ) {
-			Set<String> neighbors = this.idsMap.get(fromNode.getId());
-			if ( neighbors != null ) return neighbors.contains(toNode.getId());
-			else return false;
+		if ( this.nodesMap.containsKey(fromNode.getId()) ) {
+			fromNode = this.nodesMap.get(fromNode.getId());
+			if ( this.nodesMap.containsKey(toNode.getId()) ) {
+				toNode = this.nodesMap.get(toNode.getId());
+				Set<Node> neighbors = this.graphMap.get(fromNode);
+				if ( neighbors != null ) return neighbors.contains(toNode);
+				else return false;
+			} else return false;
 		} else return false;
 	}
 	
@@ -172,8 +162,21 @@ public class Graph {
 	// Temporary structure to control already visited nodes during a traversal algorithm (DFS and BFS)
 	private Set<Node> visitedSet = null;
 	
-	// Count for the connected Components
+	// Connected Components structures
 	int ccNumber = -1; // only valid after the graph is traversed by a complete DFS or BFS
+	private Vector<Graph> CCs = null;
+	
+	// Returns the number of connected components of the graph computed by a complete traversal or -1 if the graph has never been traversed
+	public int getNumberOfCCs() {
+		if ( !this.visitedSet.isEmpty() ) {
+			return this.ccNumber+1;
+		} else return -1;
+	}
+	
+	// Returns the connected components of the graph computed by a complete traversal (null if the graph has never been traversed)
+	public Vector<Graph> getCCs() {
+		return this.CCs;
+	}
 	
 	// Produces true if given node has already been visited in a graph traversal
 	private boolean isVisited(Node node) {
@@ -188,22 +191,25 @@ public class Graph {
 	
 	// Performs a Depth-First Search (DFS) in the graph and returns the DFS-Forest.
 	// The DFS-Forest produced is as a List of other Graphs, which are the disconnected DFS-Trees produced by the traversal
-	public List<Graph> dfs(Node s) {		
+	public List<Graph> dfs(Node s) {
+		if (s == null || !this.contains(s)) return null;
 		//Initialize and reset traversal control structures:
 		List<Graph> dfsForest = new LinkedList<Graph>();
 		this.visitedSet = new HashSet<Node>();
-		this.ccNumber = 0;
+		this.ccNumber = -1;
+		this.CCs = new Vector<Graph>();
 
 		// Iterate through all nodes in the graph, starting from "s"
-		Iterator<Node> it = this.getNodes().iterator();
-		while ( it.hasNext() ) {
+		for (Iterator<Node> it = this.getNodes().iterator(); it.hasNext();  ) {
 			Node next = null;
-			if (ccNumber == 0) next = s; // this is to force start from "s"
+			if (ccNumber == -1) next = s; // this is to force start from "s"
 			else next = it.next();
 			boolean visited = this.isVisited(next);
 			if( !visited ) {
+				// Initialize a new Connected Component
 				this.ccNumber++;
-				Graph dfsTree = new Graph("CC"+ccNumber, true); // Obs: DFS-Tree is directed for the purpose of clarity only
+				this.CCs.add(new Graph("CC"+ccNumber, !this.undirected)); // Note: Connected components are sub-graphs of original graph and of the same type as it 
+				Graph dfsTree = new Graph("dfsTree"+(this.ccNumber+1), true); // Note: DFS-Tree is directed for the purpose of clarity only
 				dfsVisit(next, dfsTree);
 				dfsForest.add(dfsTree);
 			}
@@ -214,12 +220,13 @@ public class Graph {
 	private void dfsVisit(Node node, Graph dfsTree) {		
 		this.markVisited(node);
 		dfsTree.addNode(node);
-		Iterator<Node> neighbors = this.getNeighbors(node).iterator();
-		while ( neighbors.hasNext() ) {
+		for (Iterator<Node> neighbors = this.getNeighbors(node).iterator(); neighbors.hasNext();  ) {
 			Node next = neighbors.next();
+			// Always insert edge 'node'-'next' into current Connected Component
+			this.CCs.get(this.ccNumber).addEdge(node,next);
 			boolean visited = this.isVisited(next);
 			if( !visited ) {
-				// Insert 'node'-'next' edge into dfsTree
+				// Insert edge 'node'-'next' into dfsTree
 				dfsTree.addEdge(node, next);
 				
 				// Visit next node
@@ -231,32 +238,37 @@ public class Graph {
 	// Performs a Breadth-First Search (BFS) in the graph and returns the BFS-Forest.
 	// The BFS-Forest produced is as a List of other Graphs, which are the disconnected BFS-Trees produced by the traversal
 	public List<Graph> bfs(Node s) {
+		if (s == null || !this.contains(s)) return null;
 		//Initialize and reset traversal control structures:
 		List<Graph> bfsForest = new LinkedList<Graph>();
 		this.visitedSet = new HashSet<Node>();
-		this.ccNumber = 0;
-		LinkedList<Node> queue = new LinkedList<Node>();
+		this.ccNumber = -1;
+		this.CCs = new Vector<Graph>();
+		Deque<Node> queue = new LinkedList<Node>();
 
 		// Iterate through all nodes in the graph, starting from "s"
-		Iterator<Node> it = this.getNodes().iterator();
-		while ( it.hasNext() ) {
+		for (Iterator<Node> it = this.getNodes().iterator(); it.hasNext();  ) {
 			Node next = null;
-			if (ccNumber == 0) next = s; // this is to force to start from "s"
+			if (ccNumber == -1) next = s; // this is to force to start from "s"
 			else next = it.next();
 			boolean visited = isVisited(next);
 			if( !visited ) {
 				this.markVisited(next);
 				queue.add(next);
+				// Initialize a new Connected Component
 				this.ccNumber++;
-				Graph bfsTree = new Graph("CC"+ccNumber, true); // Obs: BFS-Tree is directed for the purpose of clarity only	
+				this.CCs.add(new Graph("CC"+ccNumber, !this.undirected)); // Note: Connected components are sub-graphs of original graph and of the same type as it
+				Graph bfsTree = new Graph("bfsTree"+(ccNumber+1), true); // Note: BFS-Tree is directed for the purpose of clarity only	
 				while ( !queue.isEmpty() ) {
 					Node u = queue.remove();
 					bfsTree.addNode(u);
-					Iterator<Node> neighbors = getNeighbors(u).iterator();
-					while ( neighbors.hasNext() ) {
+					for (Iterator<Node> neighbors = this.getNeighbors(u).iterator(); neighbors.hasNext();  ) {
 						Node v = neighbors.next();
+						// Always insert edge 'u'-'v' into current Connected Component
+						this.CCs.get(this.ccNumber).addEdge(u,v);
 						boolean explored = isVisited(v);
 						if( !explored ) {
+							// Insert edge 'u'-'v' into bfsTree
 							bfsTree.addEdge(u, v);
 							this.markVisited(v);
 							queue.add(v);
@@ -272,11 +284,12 @@ public class Graph {
 	// Finds the minimum path between nodes start and end performing a Breadth-First Search (BFS).
 	// Returns a List of Nodes which are the path, or null if there is no path between the two given nodes.
 	// Obs: The size of the List produced - 1 will be the distance between the two nodes.
-	public List<Node> bfsPath(Node start, Node end) {
+	public LinkedList<Node> bfsPath(Node start, Node end) {
+		if (start == null || !this.contains(start) || end == null || !this.contains(end)) return null;
 		//Initialize and reset traversal control structures:
 		this.visitedSet = new HashSet<Node>();
-		LinkedList<Node> queue = new LinkedList<Node>();
 		Map<Node,Node> fathers = new HashMap<Node,Node>();
+		Deque<Node> queue = new LinkedList<Node>();
 		boolean found = false;
 
 		this.markVisited(start);
@@ -284,10 +297,9 @@ public class Graph {
 		queue.add(start);	
 		while ( !queue.isEmpty() && !found ) {
 			Node u = queue.remove();
-			if ( u.equals(end) ) found = true;
-			else {
-				Iterator<Node> neighbors = this.getNeighbors(u).iterator();
-				while ( neighbors.hasNext() ) {
+			if ( u == end ) found = true;
+			else
+				for (Iterator<Node> neighbors = this.getNeighbors(u).iterator(); neighbors.hasNext();  ) {
 					Node v = neighbors.next();
 					if( !isVisited(v) ) {
 						fathers.put(v,u);
@@ -295,14 +307,13 @@ public class Graph {
 						queue.add(v);
 					}
 				}
-			}
 		}
 		if ( found ) { // builds the result list going backwards through node parents list
 			LinkedList<Node> result = new LinkedList<Node>();
-			Node father = end;
-			while ( father != null ) {
-				result.push(father);
-				father = fathers.get(father);
+			Node node = end;
+			while ( node != null ) {
+				result.push(node);
+				node = fathers.get(node);
 			}
 			return result;
 		} else return null;
@@ -330,7 +341,7 @@ public class Graph {
 		Node node5 = new Node("E");
 		Node node6 = new Node("F");
 		myGraph.addEdge(node5, node6);
-		//Should not replicate nodes and edges
+		//Should not replicate nodes and edges:
 		myGraph.addNode(new Node("F"));
 		myGraph.addEdge(node5, node6);
 		myGraph.addEdge(node5, new Node("F"));
@@ -340,69 +351,55 @@ public class Graph {
 		
 		System.out.println("*** Tests for DFS traversal: ***");
 		Set<Node> allNodes = myGraph.getNodes();
-		Iterator<Node> itNodes = allNodes.iterator();
-		while ( itNodes.hasNext() ){
-			Node v = itNodes.next();
+		for (Iterator<Node> it = allNodes.iterator(); it.hasNext(); ) { 
+			Node v = it.next();
 			List<Graph> dfsForest = myGraph.dfs(v);
 			
 			System.out.println("DFS starting at node " + v + " result is:");
-			Iterator<Graph> it = dfsForest.iterator();
-			while (it.hasNext()) {
-				Graph dfsTree = it.next();
-				System.out.println(dfsTree);
+			for (Iterator<Graph> it2 = dfsForest.iterator(); it2.hasNext();  ) {
+				Graph dfsTree = it2.next();
+				dfsTree.println();
 			}
 		}
-		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components.");
-		System.out.println("Each one has:");
-		List<Graph> dfsForest = myGraph.dfs(node5);
-		Iterator<Graph> it = dfsForest.iterator();
-		while (it.hasNext()) {
-			Graph dfsTree = it.next();
-			//System.out.println(dfsTree.getN() + " node(s) and " + dfsTree.getM() + " edge(s).");
-			dfsTree.println();
+		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components:");
+		for (Iterator<Graph> it = myGraph.getCCs().iterator(); it.hasNext();  ) {
+			Graph cc = it.next();
+			System.out.println(cc);
+			cc.println();
 		}
 		System.out.println();
 		
 		System.out.println("*** Tests for BFS traversal: ***");
-		//Set<Node> allNodes = myGraph.getNodes();
-		Iterator<Node> itNodes2 = allNodes.iterator();
-		while ( itNodes2.hasNext() ){
-			Node v = itNodes2.next();
+		for (Iterator<Node> it = allNodes.iterator(); it.hasNext(); ) {
+			Node v = it.next();
 			List<Graph> bfsForest = myGraph.bfs(v);
 			
 			System.out.println("BFS starting at node " + v + " result is:");
-			Iterator<Graph> it2 = bfsForest.iterator();
-			while (it2.hasNext()) {
+			for (Iterator<Graph> it2 = bfsForest.iterator(); it2.hasNext();  ) {
 				Graph bfsTree = it2.next();
-				System.out.println(bfsTree);
+				bfsTree.println();
 			}
 		}
-		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components.");
-		System.out.println("Each one has:");
-		List<Graph> bfsForest = myGraph.bfs(node5);
-		Iterator<Graph> it3 = bfsForest.iterator();
-		while (it3.hasNext()) {
-			Graph bfsTree = it3.next();
-			//System.out.println(dfsTree.getN() + " node(s) and " + dfsTree.getM() + " edge(s).");
-			bfsTree.println();
+		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components:");
+		for (Iterator<Graph> it = myGraph.getCCs().iterator(); it.hasNext();  ) {
+			Graph cc = it.next();
+			System.out.println(cc);
+			cc.println();
 		}
 		System.out.println();
 		
 		System.out.println("*** Tests for Path finding and distance through BFS: ***");
-		itNodes = myGraph.getNodes().iterator();
-		while ( itNodes.hasNext() ){
-			Node u = itNodes.next();
-			itNodes2 = myGraph.getNodes().iterator();
-			while ( itNodes2.hasNext() ){
-				Node v = itNodes2.next();
+		for (Iterator<Node> it1 = allNodes.iterator(); it1.hasNext(); ) {
+			Node u = it1.next();
+			for (Iterator<Node> it2 = allNodes.iterator(); it2.hasNext(); ) {
+				Node v = it2.next();
 				List<Node> path = myGraph.bfsPath(u,v);
 				if ( path == null ) {
 					System.out.println("Node " + u + " cannot reach " + v + "!");
 				} else {
 					System.out.println("Distance from " + u + " to " + v + " is " + (path.size()-1) + ":");
-					Iterator<Node> itNodes3 = path.iterator();
-					while (itNodes3.hasNext()) {
-						Node tempNode = itNodes3.next();
+					for (Iterator<Node> it3 = path.iterator(); it3.hasNext(); ) {
+						Node tempNode = it3.next();
 						System.out.println(tempNode);
 					}
 				}

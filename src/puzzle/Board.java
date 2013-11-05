@@ -9,10 +9,10 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import datastructures.Node;
 
+// A graph node representing a game board and its configuration:
+// Each position contains a number from 1..(SIZE*SIZE-1) + one empty square denoted by "0"
 public class Board extends Node {
 
-	// A Node representing a game configuration
-    
 	// Constants:
 	// ==========
     public static final int SIZE = 3;
@@ -89,10 +89,20 @@ public class Board extends Node {
         printBoard();
         System.out.println("Empty square is at position " + emptyPos);
     }
+
+    // Produces true if board is a neighbor of a given one
+    public boolean isNeighbor(Board aBoard) {
+    	if (aBoard != null)
+	    	return ( (Math.abs(this.emptyPos.getLeft() - aBoard.emptyPos.getLeft()) <= 1) &&
+	    			 (Math.abs(this.emptyPos.getRight() - aBoard.emptyPos.getRight()) == 0) ) ||
+	    			 	( (Math.abs(this.emptyPos.getRight() - aBoard.emptyPos.getRight()) <= 1) &&
+	    	    			 (Math.abs(this.emptyPos.getLeft() - aBoard.emptyPos.getLeft()) == 0) );
+    	else return false;
+    }
     
-    // Produces a new board exchanging positions p1 with p2
+    // Produces a new board exchanging positions p1 with p2, if possible; null if p1 or p2 is out of bounds
     public Board exchange(int p1, int p2) {
-    	if ( (0<=p1)&&(p1<this.id.length())&&(0<=p2)&&(p2<this.id.length()) ) {
+    	if ( (0<=p1)&&(p1<SIZE*SIZE)&&(0<=p2)&&(p2<SIZE*SIZE) ) {
     		char[] temp = this.id.toCharArray();
 	        temp[p1] = this.id.charAt(p2);
 	        temp[p2] = this.id.charAt(p1);
@@ -103,57 +113,100 @@ public class Board extends Node {
     // Produces all possible next boards from current board
     public Set<Board> nextPossibleBoards() {
             Set<Board> neighbors = new HashSet<Board>();
+            //Can move the empty square one position at a time, according to its current position:
             int emptyPointer = this.emptyPos.getLeft()*SIZE + this.emptyPos.getRight();
-            //Can move the empty square once at a time:
-            //Move right:
-            Board newBd = this.exchange(emptyPointer, emptyPointer+1);
-            if ( newBd != null) neighbors.add(newBd);
-            //Move left:
-            newBd = this.exchange(emptyPointer, emptyPointer-1);
-            if ( newBd != null) neighbors.add(newBd);
-            //Move down:
-            newBd = this.exchange(emptyPointer, emptyPointer+SIZE);
-            if ( newBd != null) neighbors.add(newBd);
-            //Move up:
-            newBd = this.exchange(emptyPointer, emptyPointer-SIZE);
-            if ( newBd != null) neighbors.add(newBd);
+            Board newBd = null;
+            // Move down if possible:
+            if ( this.emptyPos.getLeft() < SIZE-1 ) {
+            	newBd = this.exchange(emptyPointer, emptyPointer+SIZE);
+            	if ( newBd != null) neighbors.add(newBd);
+            }
+            // Move up if possible:
+            if ( this.emptyPos.getLeft() > 0 ) {
+            	newBd = this.exchange(emptyPointer, emptyPointer-SIZE);
+            	if ( newBd != null) neighbors.add(newBd);
+            }
+            // Move right if possible:
+            if ( this.emptyPos.getRight() < SIZE-1 ) {
+	            newBd = this.exchange(emptyPointer, emptyPointer+1);
+	            if ( newBd != null) neighbors.add(newBd);
+            }
+            // Move left if possible:
+            if ( this.emptyPos.getRight() > 0 ) {
+            	newBd = this.exchange(emptyPointer, emptyPointer-1);
+            	//if ( newBd != null) 
+            	neighbors.add(newBd);
+            }
             return neighbors;
     }
 	
 	// Basic unit test "check-expects":
 	public static void main(String[] args) {
-		Board node1 = new Board("087654321");
-		node1.println();
-		node1.printBoard();
-		System.out.println(node1);
+		Board node = new Board("087654321");
+		node.println();
+		node.printBoard();
+		System.out.println(node);
 		System.out.println("\n**************************");
 		System.out.println("Solution for the " + SIZE + " x " + SIZE + " game is:");
 		SOLUTION.println();
 		
 		System.out.println("\n**************************");
 		System.out.println("Original node is:");
-		node1.printBoard();
+		node.printBoard();
 		System.out.println("Moving right is:");
-		node1.exchange(0, 1).printBoard();
+		node.exchange(0, 1).printBoard();
 		System.out.println("Moving down is:");
-		node1.exchange(0, 1).exchange(1, 4).printBoard();
+		node.exchange(0, 1).exchange(1, 4).printBoard();
 		
 		System.out.println("\n**************************");
 		System.out.println("Original node is:");
-		node1.printBoard();
+		node.printBoard();
+		boolean test = true;
 		System.out.println("Possible moves are:");
-		Iterator<Board> it = node1.nextPossibleBoards().iterator();
-		while ( it.hasNext() ) {
-			it.next().printBoard();
+		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) { 
+			Board bd = it.next();
+			bd.printBoard();
+			test = test && node.isNeighbor(bd);
 		}
+		System.out.println("Ok=" + test);
 		System.out.println();
-		Board node2 = new Board("123405678");
+		
+		node = new Board("123405678");
 		System.out.println("Original node is:");
-		node2.printBoard();
+		node.printBoard();
 		System.out.println("Possible moves are:");
-		it = node2.nextPossibleBoards().iterator();
-		while ( it.hasNext() ) {
-			it.next().printBoard();
+		test = true;
+		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) { 
+			Board bd = it.next();
+			bd.printBoard();
+			test = test && node.isNeighbor(bd);
 		}
+		System.out.println("Ok=" + test);
+		System.out.println();
+		
+		node = new Board("102345678");
+		System.out.println("Original node is:");
+		node.printBoard();
+		System.out.println("Possible moves are:");
+		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) {
+			Board bd = it.next();
+			bd.printBoard();
+			test = test && node.isNeighbor(bd);
+		}
+		System.out.println("Ok=" + test);
+		System.out.println();
+		
+		//Check for error in node "627018453"
+		node = new Board("627018453");
+		System.out.println("Original node is:");
+		node.printBoard();
+		System.out.println("Possible moves are:");
+		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) {
+			Board bd = it.next();
+		bd.printBoard();
+		test = test && node.isNeighbor(bd);
+		}
+		System.out.println("Ok=" + test);
+		System.out.println();
 	}
 }
