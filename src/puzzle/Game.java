@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 
 import datastructures.Graph;
@@ -103,6 +104,7 @@ public class Game extends Graph {
 		System.out.println();
 		
 		// Generating graph:
+		System.out.println("******************* Building Game Graph ******************");
 		startTime = new Date();
 		System.out.println(startTime + " (" + startTime.getTime() + ")> Building graph:");
 		permutations = Game.permutate("012345678",0);
@@ -123,7 +125,7 @@ public class Game extends Graph {
 		System.out.println("************************ Tarefa 1 ************************");
 		startTime = new Date();
 		System.out.println(startTime + " (" + startTime.getTime() + ")> Looking for connected components by DFS:");
-		System.out.print("Performing DFS..."); // Note: Use -Xss1g to increase JVM stack size to avoid stack overflow errors
+		System.out.print("Performing DFS... "); // Note: Use -Xss1g to increase JVM stack size to avoid stack overflow errors
 		game.dfs(game.getNodeById("123456780"));
 		System.out.println("Done!");
 		endTime = new Date();
@@ -136,26 +138,13 @@ public class Game extends Graph {
 			System.out.println(CCs.next());
 		System.out.println();
 		
-		startTime = new Date();
-		System.out.println(startTime + " (" + startTime.getTime() + ")> Looking for connected components by BFS (just double-checking):");
-		System.out.print("Performing BFS..."); // Obs: Use -Xms2g to increase JVM heap size for a better performance)
-		game.bfs(game.getNodeById("123456780"));
-		System.out.println("Done!");
-		endTime = new Date();
-		System.out.println(endTime + " (" + endTime.getTime() + ")> Finished!");
-		System.out.println(endTime.getTime() - startTime.getTime() + " milliseconds ellapsed");
-		System.out.println("Found " + game.getNumberOfCCs() + " connected components:");
-		for (Iterator<Graph> CCs = game.getCCs().iterator(); CCs.hasNext(); )
-			System.out.println(CCs.next());
-		System.out.println();
-		
 		// Tarefa 2:
 		System.out.println("************************ Tarefa 2 ************************");
 		startTime = new Date();
 		System.out.println(startTime + " (" + startTime.getTime() + ")> Looking for maximum distance to solution by BFS:");
-		System.out.println("Looking for path with the maximum distance..."); // Obs: Use -Xms<maximum your machine will permit>g to increase JVM heap size for a better performance"
+		// This is to eliminate half of the graph, since solution can only be reached from its own connected component:
 		Graph halfGame = null;
-		Board solution = (Board) game.getNodeById(Board.SOLUTION.getId());
+		Board solution = (Board) game.getNodeById(Board.SOLUTION);
 		for (Iterator<Graph> CCs = game.getCCs().iterator(); CCs.hasNext(); ) {
 			halfGame = CCs.next();
 			if ( halfGame.contains(solution) ) {
@@ -163,25 +152,24 @@ public class Game extends Graph {
 				break;
 			}
 		}
-		Iterator<Node> nodes = halfGame.getNodes().iterator();
-		LinkedList<Node> maxPath = new LinkedList<Node>(); int count = 0;
-		while ( nodes.hasNext() ) {
-			LinkedList<Node> path = halfGame.bfsPath(nodes.next(),solution);
-			if (path != null)
-				if ( path.size() > maxPath.size() )
-					maxPath = (LinkedList<Node>) path;
-			if ((count++)%(100) == 0)
-				System.out.println(new Date() + "(" + new Date().getTime() + ")> " + count + " nodes checked");
-		}
+		// Test for the the nodes reachable from solution and pick any node from the last level of the BFS:
+		// it will be at maximum distance to/from the solution
+		// Note: the graph is undirected, so paths "to" and "from" any pair of nodes are exactly the same.
+		System.out.print("Performing BFS... "); // Note: Use -Xms2g to increase JVM heap size for a better performance"
+		Vector<Set<Node>> bfsLevels = halfGame.bfs(solution);
 		System.out.println("Done!");
 		endTime = new Date();
 		System.out.println(endTime + " (" + endTime.getTime() + ")> Finished!");
 		System.out.println(endTime.getTime() - startTime.getTime() + " milliseconds ellapsed");
-		System.out.println("Tha maximum path to solution has distance " + (maxPath.size()-1) + " and starts at node:");
-		System.out.println((Board) maxPath.getFirst());
-		System.out.println("Steps:");
-		for (Iterator<Node> pathNodes = maxPath.iterator(); pathNodes.hasNext(); ) {
-			Board bd = (Board) maxPath.remove();
+		Board aFarAwayNode = (Board) bfsLevels.lastElement().iterator().next();
+		System.out.println("Most far away node is:");
+		aFarAwayNode.println();
+		System.out.println("and it is at distance " + (bfsLevels.size()-1) + " to solution.");
+		System.out.println("Path from it to solution is the following steps:");
+		// Prints the path in reverse direction, since we started from node "solution"
+		LinkedList<Node> maxPath = halfGame.getShortestPath(solution, aFarAwayNode);
+		for (Iterator<Node> pathNodes = maxPath.descendingIterator(); pathNodes.hasNext(); ) {
+			Board bd = (Board) pathNodes.next();
 			bd.printBoard();
 			//System.out.println(bd);
 		}

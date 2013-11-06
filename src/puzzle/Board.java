@@ -34,7 +34,7 @@ public class Board extends Node {
      * 1 2 3
      * 4 5 6
      * 7 8 0 */
-    public static final Board SOLUTION = new Board("123456780");
+    public static final String SOLUTION = "123456780";
     
     // Functions:
     // ==========    
@@ -148,7 +148,7 @@ public class Board extends Node {
 		System.out.println(node);
 		System.out.println("\n**************************");
 		System.out.println("Solution for the " + SIZE + " x " + SIZE + " game is:");
-		SOLUTION.println();
+		new Board(Board.SOLUTION).println();
 		
 		System.out.println("\n**************************");
 		System.out.println("Original node is:");

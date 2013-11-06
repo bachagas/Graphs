@@ -162,9 +162,12 @@ public class Graph {
 	// Temporary structure to control already visited nodes during a traversal algorithm (DFS and BFS)
 	private Set<Node> visitedSet = null;
 	
-	// Connected Components structures
+	// Connected Components structures (used by DFS)
 	int ccNumber = -1; // only valid after the graph is traversed by a complete DFS or BFS
 	private Vector<Graph> CCs = null;
+	
+	// Shortest paths structures (used by BFS)
+	Map<Node,Node> fathers = null;
 	
 	// Returns the number of connected components of the graph computed by a complete traversal or -1 if the graph has never been traversed
 	public int getNumberOfCCs() {
@@ -191,8 +194,8 @@ public class Graph {
 	
 	// Performs a Depth-First Search (DFS) in the graph and returns the DFS-Forest.
 	// The DFS-Forest produced is as a List of other Graphs, which are the disconnected DFS-Trees produced by the traversal
-	public List<Graph> dfs(Node s) {
-		if (s == null || !this.contains(s)) return null;
+	public List<Graph> dfs(Node start) {
+		if (start == null || !this.contains(start)) return null;
 		//Initialize and reset traversal control structures:
 		List<Graph> dfsForest = new LinkedList<Graph>();
 		this.visitedSet = new HashSet<Node>();
@@ -202,7 +205,7 @@ public class Graph {
 		// Iterate through all nodes in the graph, starting from "s"
 		for (Iterator<Node> it = this.getNodes().iterator(); it.hasNext();  ) {
 			Node next = null;
-			if (ccNumber == -1) next = s; // this is to force start from "s"
+			if (ccNumber == -1) next = start; // this is to force start from "s"
 			else next = it.next();
 			boolean visited = this.isVisited(next);
 			if( !visited ) {
@@ -235,88 +238,71 @@ public class Graph {
 		}
 	}
 	
-	// Performs a Breadth-First Search (BFS) in the graph and returns the BFS-Forest.
-	// The BFS-Forest produced is as a List of other Graphs, which are the disconnected BFS-Trees produced by the traversal
-	public List<Graph> bfs(Node s) {
-		if (s == null || !this.contains(s)) return null;
+	// Performs a Breadth-First Search (BFS) in the graph and returns the BFS-Tree levels in the form of a vector:
+	// Each level[i] is the set of nodes at distance "i" from node "start".
+	public Vector<Set<Node>> bfs(Node start) {
+		if (start == null || !this.contains(start)) return null;
 		//Initialize and reset traversal control structures:
-		List<Graph> bfsForest = new LinkedList<Graph>();
 		this.visitedSet = new HashSet<Node>();
-		this.ccNumber = -1;
-		this.CCs = new Vector<Graph>();
+		this.fathers = new HashMap<Node,Node>();
+		Map<Node,Integer> distances = new HashMap<Node,Integer>();
+		Vector<Set<Node>> bfsLevels = new Vector<Set<Node>>();
 		Deque<Node> queue = new LinkedList<Node>();
+		Set<Node> level = null;
 
-		// Iterate through all nodes in the graph, starting from "s"
+		// Iterates through all nodes in the graph, starting from "s"
 		for (Iterator<Node> it = this.getNodes().iterator(); it.hasNext();  ) {
 			Node next = null;
-			if (ccNumber == -1) next = s; // this is to force to start from "s"
-			else next = it.next();
+			if (level == null) next = start; // this is to force start from "s"
+			else break;                      // may stop if finds another connected component that is not reachable from node "s"
 			boolean visited = isVisited(next);
 			if( !visited ) {
 				this.markVisited(next);
 				queue.add(next);
-				// Initialize a new Connected Component
-				this.ccNumber++;
-				this.CCs.add(new Graph("CC"+ccNumber, !this.undirected)); // Note: Connected components are sub-graphs of original graph and of the same type as it
-				Graph bfsTree = new Graph("bfsTree"+(ccNumber+1), true); // Note: BFS-Tree is directed for the purpose of clarity only	
+				// Initial distance and first level of BFS tree
+				distances.put(next,0);
+				level = new HashSet<Node>();
+				level.add(next);
+				bfsLevels.add(level);
 				while ( !queue.isEmpty() ) {
 					Node u = queue.remove();
-					bfsTree.addNode(u);
 					for (Iterator<Node> neighbors = this.getNeighbors(u).iterator(); neighbors.hasNext();  ) {
 						Node v = neighbors.next();
-						// Always insert edge 'u'-'v' into current Connected Component
-						this.CCs.get(this.ccNumber).addEdge(u,v);
 						boolean explored = isVisited(v);
 						if( !explored ) {
-							// Insert edge 'u'-'v' into bfsTree
-							bfsTree.addEdge(u, v);
+							this.fathers.put(v,u);
+							distances.put(v,distances.get(u)+1);
+							if (bfsLevels.size()<distances.get(v)+1) bfsLevels.add(new HashSet<Node>()); // initializes a new level
+							level = bfsLevels.get(distances.get(v));
+							level.add(v);
 							this.markVisited(v);
 							queue.add(v);
 						}
 					}
 				}
-				bfsForest.add(bfsTree);
 			}
 		}
-		return bfsForest;
+		return bfsLevels;
 	}
-
-	// Finds the minimum path between nodes start and end performing a Breadth-First Search (BFS).
-	// Returns a List of Nodes which are the path, or null if there is no path between the two given nodes.
-	// Obs: The size of the List produced - 1 will be the distance between the two nodes.
-	public LinkedList<Node> bfsPath(Node start, Node end) {
-		if (start == null || !this.contains(start) || end == null || !this.contains(end)) return null;
-		//Initialize and reset traversal control structures:
-		this.visitedSet = new HashSet<Node>();
-		Map<Node,Node> fathers = new HashMap<Node,Node>();
-		Deque<Node> queue = new LinkedList<Node>();
-		boolean found = false;
-
-		this.markVisited(start);
-		fathers.put(start,null);
-		queue.add(start);	
-		while ( !queue.isEmpty() && !found ) {
-			Node u = queue.remove();
-			if ( u == end ) found = true;
-			else
-				for (Iterator<Node> neighbors = this.getNeighbors(u).iterator(); neighbors.hasNext();  ) {
-					Node v = neighbors.next();
-					if( !isVisited(v) ) {
-						fathers.put(v,u);
-						this.markVisited(v);
-						queue.add(v);
-					}
-				}
+	
+	// Returns the shortest path from node "start" to node "end"; null if any node doesn't belong to the graph
+	// or "end" it is not reachable from "start"
+	public LinkedList<Node> getShortestPath(Node start, Node end) {
+		if (start == null || !this.contains(start) ||     // node "start" doesn't belong to the graph
+				end == null || !this.contains(end) )      // node "end" doesn't belong to the graph
+			return null;
+		if (this.fathers == null ||                                 // BFS has not been executed yet 
+				((start != end)&&!this.fathers.containsKey(end)) )  // or it has not started from node "start"
+			this.bfs(start);                                        // Note: if node "end" is not reachable from node "start" will be checked at the end!
+		// Builds the result list going backwards through node parents list
+		LinkedList<Node> result = new LinkedList<Node>();
+		Node node = end;
+		while ( node != null ) {
+			result.push(node);
+			node = this.fathers.get(node);
 		}
-		if ( found ) { // builds the result list going backwards through node parents list
-			LinkedList<Node> result = new LinkedList<Node>();
-			Node node = end;
-			while ( node != null ) {
-				result.push(node);
-				node = fathers.get(node);
-			}
-			return result;
-		} else return null;
+		if ( result.getFirst() != start) return null; // there is no path from "start" to "end" --> node "end" is not reachable from node "start"!
+		else return result;
 	}
 	
 	// Basic unit test "check-expects":
@@ -372,38 +358,26 @@ public class Graph {
 		System.out.println("*** Tests for BFS traversal: ***");
 		for (Iterator<Node> it = allNodes.iterator(); it.hasNext(); ) {
 			Node v = it.next();
-			List<Graph> bfsForest = myGraph.bfs(v);
-			
+			Vector<Set<Node>> bfsLevels = myGraph.bfs(v);
 			System.out.println("BFS starting at node " + v + " result is:");
-			for (Iterator<Graph> it2 = bfsForest.iterator(); it2.hasNext();  ) {
-				Graph bfsTree = it2.next();
-				bfsTree.println();
+			for (Iterator<Set<Node>> it2 = bfsLevels.iterator(); it2.hasNext();  ) {
+				System.out.println(it2.next());
 			}
-		}
-		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components:");
-		for (Iterator<Graph> it = myGraph.getCCs().iterator(); it.hasNext();  ) {
-			Graph cc = it.next();
-			System.out.println(cc);
-			cc.println();
-		}
-		System.out.println();
-		
-		System.out.println("*** Tests for Path finding and distance through BFS: ***");
-		for (Iterator<Node> it1 = allNodes.iterator(); it1.hasNext(); ) {
-			Node u = it1.next();
+			
 			for (Iterator<Node> it2 = allNodes.iterator(); it2.hasNext(); ) {
-				Node v = it2.next();
-				List<Node> path = myGraph.bfsPath(u,v);
+				Node u = it2.next();
+				List<Node> path = myGraph.getShortestPath(v,u);
 				if ( path == null ) {
-					System.out.println("Node " + u + " cannot reach " + v + "!");
+					System.out.println("Node " + v + " cannot reach " + u + "!");
 				} else {
-					System.out.println("Distance from " + u + " to " + v + " is " + (path.size()-1) + ":");
+					System.out.println("Distance from " + v + " to " + u + " is " + (path.size()-1) + ":");
 					for (Iterator<Node> it3 = path.iterator(); it3.hasNext(); ) {
 						Node tempNode = it3.next();
 						System.out.println(tempNode);
 					}
 				}
 			}
+			System.out.println();
 		}
 		System.out.println();
 	}
