@@ -1,0 +1,1 @@
+java -Xms2g -Xss2g -cp "bin;lib\*" puzzle.Game > stdout.txt
