@@ -44,7 +44,7 @@ public class Graph {
 	}
 
 	// Creates an empty graph of estimated size, what may improve the performance of the HashMap
-	public Graph( String _label, int size ) {
+	protected Graph( String _label, int size ) {
 		this.label = new String(_label);
 		this.graphMap = new HashMap<Node, Set<Node>>( size );
 		this.nodesMap = new HashMap<String, Node>( size );
