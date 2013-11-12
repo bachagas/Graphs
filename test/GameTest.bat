@@ -1,0 +1,1 @@
+java -Xms2g -Xss2g -cp "../bin;../lib/*" test.GameTest > GameTest.out

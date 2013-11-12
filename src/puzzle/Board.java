@@ -1,8 +1,8 @@
 package puzzle;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -43,7 +43,7 @@ public class Board extends Node {
     	super(aBoard);
         //TODO: use assert or Exception???
         //if (_id.length() != 9) throw new Exception("");
-        assert (aBoard.length() != 9);
+        assert (aBoard.length() == 9);
         for (int i=0; i<SIZE; i++) {
             for (int j=0; j<SIZE; j++) {
                 board[i][j] = Integer.parseInt(this.id.substring(i*SIZE+j, i*SIZE+j+1));
@@ -55,15 +55,15 @@ public class Board extends Node {
     }
     
     public int[][] getBoard() {
-        return board;
+        return this.board;
     }
     
     public Pair<Integer,Integer> getEmptyPos() {
-        return emptyPos;
+        return this.emptyPos;
     }
     
     public String stringfy() {
-        return ArrayUtils.toString(board);
+        return ArrayUtils.toString(this.board);
     }
     
     // Prints a board as a SIZE x SIZE matrix
@@ -74,10 +74,10 @@ public class Board extends Node {
             else temp += " ";
             for (int j=0; j<SIZE; j++) {
                 temp += board[i][j];
-                if (i==2 && j==2) temp += "]";
+                if (i==SIZE-1 && j==SIZE-1) temp += "]";
                 else temp += " ";
             }
-            if (i<2) temp += "\n";
+            if (i<SIZE-1) temp += "\n";
         }
         System.out.println( temp );
     }
@@ -139,74 +139,4 @@ public class Board extends Node {
             }
             return neighbors;
     }
-	
-	// Basic unit test "check-expects":
-	public static void main(String[] args) {
-		Board node = new Board("087654321");
-		node.println();
-		node.printBoard();
-		System.out.println(node);
-		System.out.println("\n**************************");
-		System.out.println("Solution for the " + SIZE + " x " + SIZE + " game is:");
-		new Board(Board.SOLUTION).println();
-		
-		System.out.println("\n**************************");
-		System.out.println("Original node is:");
-		node.printBoard();
-		System.out.println("Moving right is:");
-		node.exchange(0, 1).printBoard();
-		System.out.println("Moving down is:");
-		node.exchange(0, 1).exchange(1, 4).printBoard();
-		
-		System.out.println("\n**************************");
-		System.out.println("Original node is:");
-		node.printBoard();
-		boolean test = true;
-		System.out.println("Possible moves are:");
-		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) { 
-			Board bd = it.next();
-			bd.printBoard();
-			test = test && node.isNeighbor(bd);
-		}
-		System.out.println("Ok=" + test);
-		System.out.println();
-		
-		node = new Board("123405678");
-		System.out.println("Original node is:");
-		node.printBoard();
-		System.out.println("Possible moves are:");
-		test = true;
-		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) { 
-			Board bd = it.next();
-			bd.printBoard();
-			test = test && node.isNeighbor(bd);
-		}
-		System.out.println("Ok=" + test);
-		System.out.println();
-		
-		node = new Board("102345678");
-		System.out.println("Original node is:");
-		node.printBoard();
-		System.out.println("Possible moves are:");
-		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) {
-			Board bd = it.next();
-			bd.printBoard();
-			test = test && node.isNeighbor(bd);
-		}
-		System.out.println("Ok=" + test);
-		System.out.println();
-		
-		//Check for error in node "627018453"
-		node = new Board("627018453");
-		System.out.println("Original node is:");
-		node.printBoard();
-		System.out.println("Possible moves are:");
-		for (Iterator<Board> it = node.nextPossibleBoards().iterator(); it.hasNext(); ) {
-			Board bd = it.next();
-		bd.printBoard();
-		test = test && node.isNeighbor(bd);
-		}
-		System.out.println("Ok=" + test);
-		System.out.println();
-	}
 }

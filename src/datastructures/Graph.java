@@ -65,7 +65,7 @@ public class Graph {
 	// Adds a node to the graph, if it is not already in it. Checks for duplicate nodes by its id and 
 	// returns new node added, or existent if there was already a node with the same id in the graph.
 	public Node addNode( Node newNode ) {
-		if ( !this.contains(newNode) ) {
+		if ( !this.containsNode(newNode) ) {
 			this.graphMap.put(newNode, new HashSet<Node>());
 			this.nodesMap.put(newNode.getId(), newNode);
 			this.nNodes++;
@@ -77,7 +77,7 @@ public class Graph {
 	// Adds an edge to the graph, if it is not already in it; ignores new edge otherwise.
 	// Creates new nodes "from" and "to" if needed.
 	public void addEdge( Node fromNode, Node toNode ) {
-		if ( !this.contains(fromNode,toNode) ) {
+		if ( !this.containsEdge(fromNode,toNode) ) {
 			fromNode = this.addNode(fromNode);
 			toNode = this.addNode(toNode);
 			Set<Node> fromNeighbors = this.graphMap.get(fromNode);
@@ -140,12 +140,12 @@ public class Graph {
 	}
 
 	// Produces true if graph contains a given node, false otherwise
-	public boolean contains(Node aNode) {
+	public boolean containsNode(Node aNode) {
 		return this.nodesMap.containsKey(aNode.getId());
 	}
 	
 	// Produces true if graph contains given edge, false otherwise
-	private boolean contains(Node fromNode, Node toNode) {
+	private boolean containsEdge(Node fromNode, Node toNode) {
 		if ( this.nodesMap.containsKey(fromNode.getId()) ) {
 			fromNode = this.nodesMap.get(fromNode.getId());
 			if ( this.nodesMap.containsKey(toNode.getId()) ) {
@@ -167,7 +167,7 @@ public class Graph {
 	private Vector<Graph> CCs = null;
 	
 	// Shortest paths structures (used by BFS)
-	Map<Node,Node> fathers = null;
+	Map<Node,Node> parents = null;
 	
 	// Returns the number of connected components of the graph computed by a complete traversal or -1 if the graph has never been traversed
 	public int getNumberOfCCs() {
@@ -195,7 +195,7 @@ public class Graph {
 	// Performs a Depth-First Search (DFS) in the graph and returns the DFS-Forest.
 	// The DFS-Forest produced is as a List of other Graphs, which are the disconnected DFS-Trees produced by the traversal
 	public List<Graph> dfs(Node start) {
-		if (start == null || !this.contains(start)) return null;
+		if (start == null || !this.containsNode(start)) return null;
 		//Initialize and reset traversal control structures:
 		List<Graph> dfsForest = new LinkedList<Graph>();
 		this.visitedSet = new HashSet<Node>();
@@ -241,10 +241,10 @@ public class Graph {
 	// Performs a Breadth-First Search (BFS) in the graph and returns the BFS-Tree levels in the form of a vector:
 	// Each level[i] is the set of nodes at distance "i" from node "start".
 	public Vector<Set<Node>> bfs(Node start) {
-		if (start == null || !this.contains(start)) return null;
+		if (start == null || !this.containsNode(start)) return null;
 		//Initialize and reset traversal control structures:
 		this.visitedSet = new HashSet<Node>();
-		this.fathers = new HashMap<Node,Node>();
+		this.parents = new HashMap<Node,Node>();
 		Map<Node,Integer> distances = new HashMap<Node,Integer>();
 		Vector<Set<Node>> bfsLevels = new Vector<Set<Node>>();
 		Deque<Node> queue = new LinkedList<Node>();
@@ -270,7 +270,7 @@ public class Graph {
 						Node v = neighbors.next();
 						boolean explored = isVisited(v);
 						if( !explored ) {
-							this.fathers.put(v,u);
+							this.parents.put(v,u);
 							distances.put(v,distances.get(u)+1);
 							if (bfsLevels.size()<distances.get(v)+1) bfsLevels.add(new HashSet<Node>()); // initializes a new level
 							level = bfsLevels.get(distances.get(v));
@@ -288,98 +288,21 @@ public class Graph {
 	// Returns the shortest path from node "start" to node "end"; null if any node doesn't belong to the graph
 	// or "end" it is not reachable from "start"
 	public LinkedList<Node> getShortestPath(Node start, Node end) {
-		if (start == null || !this.contains(start) ||     // node "start" doesn't belong to the graph
-				end == null || !this.contains(end) )      // node "end" doesn't belong to the graph
+		if (start == null || !this.containsNode(start) ||     // node "start" doesn't belong to the graph
+				end == null || !this.containsNode(end) )      // node "end" doesn't belong to the graph
 			return null;
-		if (this.fathers == null ||                                 // BFS has not been executed yet 
-				((start != end)&&!this.fathers.containsKey(end)) )  // or it has not started from node "start"
+		if (this.parents == null ||                                 // BFS has not been executed yet 
+				((start != end)&&!this.parents.containsKey(end)) )  // or it has not started from node "start"
 			this.bfs(start);                                        // Note: if node "end" is not reachable from node "start" will be checked at the end!
 		// Builds the result list going backwards through node parents list
 		LinkedList<Node> result = new LinkedList<Node>();
 		Node node = end;
 		while ( node != null ) {
 			result.push(node);
-			node = this.fathers.get(node);
+			node = this.parents.get(node);
 		}
 		if ( result.getFirst() != start) return null; // there is no path from "start" to "end" --> node "end" is not reachable from node "start"!
 		else return result;
-	}
-	
-	// Basic unit test "check-expects":
-	public static void main(String[] args) {
-		System.out.println("*** Tests for a single node: ***");
-		Node node1 = new Node("A");
-		System.out.println(node1.toString());
-		System.out.println(new Node("B").equals(node1));
-		System.out.println(new Node("A").equals(node1));
-		System.out.println();
-		
-		System.out.println("*** Tests for a simple graph example: ***");
-		Graph myGraph = new Graph("G");
-		myGraph.addNode(node1);
-		Node node2 = new Node("B");
-		Node node3 = new Node("C");
-		Node node4 = new Node("D");
-		myGraph.addEdge(node1, node2);
-		myGraph.addEdge(node2, node3);
-		myGraph.addEdge(node3, node1);
-		myGraph.addEdge(node3, node4);
-		Node node5 = new Node("E");
-		Node node6 = new Node("F");
-		myGraph.addEdge(node5, node6);
-		//Should not replicate nodes and edges:
-		myGraph.addNode(new Node("F"));
-		myGraph.addEdge(node5, node6);
-		myGraph.addEdge(node5, new Node("F"));
-		System.out.println(myGraph);
-		myGraph.println();
-		System.out.println();
-		
-		System.out.println("*** Tests for DFS traversal: ***");
-		Set<Node> allNodes = myGraph.getNodes();
-		for (Iterator<Node> it = allNodes.iterator(); it.hasNext(); ) { 
-			Node v = it.next();
-			List<Graph> dfsForest = myGraph.dfs(v);
-			
-			System.out.println("DFS starting at node " + v + " result is:");
-			for (Iterator<Graph> it2 = dfsForest.iterator(); it2.hasNext();  ) {
-				Graph dfsTree = it2.next();
-				dfsTree.println();
-			}
-		}
-		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components:");
-		for (Iterator<Graph> it = myGraph.getCCs().iterator(); it.hasNext();  ) {
-			Graph cc = it.next();
-			System.out.println(cc);
-			cc.println();
-		}
-		System.out.println();
-		
-		System.out.println("*** Tests for BFS traversal: ***");
-		for (Iterator<Node> it = allNodes.iterator(); it.hasNext(); ) {
-			Node v = it.next();
-			Vector<Set<Node>> bfsLevels = myGraph.bfs(v);
-			System.out.println("BFS starting at node " + v + " result is:");
-			for (Iterator<Set<Node>> it2 = bfsLevels.iterator(); it2.hasNext();  ) {
-				System.out.println(it2.next());
-			}
-			
-			for (Iterator<Node> it2 = allNodes.iterator(); it2.hasNext(); ) {
-				Node u = it2.next();
-				List<Node> path = myGraph.getShortestPath(v,u);
-				if ( path == null ) {
-					System.out.println("Node " + v + " cannot reach " + u + "!");
-				} else {
-					System.out.println("Distance from " + v + " to " + u + " is " + (path.size()-1) + ":");
-					for (Iterator<Node> it3 = path.iterator(); it3.hasNext(); ) {
-						Node tempNode = it3.next();
-						System.out.println(tempNode);
-					}
-				}
-			}
-			System.out.println();
-		}
-		System.out.println();
 	}
 	
 }
