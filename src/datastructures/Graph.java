@@ -1,5 +1,6 @@
 package datastructures;
 
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -157,28 +158,71 @@ public class Graph {
 		} else return false;
 	}
 	
-	// Traversal Algorithms - Functions and auxiliary structures:
+	// Traversal Algorithms - Methods and auxiliary structures:
 	// ==========================================================
 	// Temporary structure to control already visited nodes during a traversal algorithm (DFS and BFS)
 	private Set<Node> visitedSet = null;
 	
-	// Connected Components structures (used by DFS)
+	/*
+	 *  Pre and Post control structures (used by DFS)
+	 */
+	
+	// Maps nodes by their id to their pre value.
+	private Map<String, Integer> preMap = null;
+	// Stores the next pre value to be assigned to a visited node by DFS
+	private int nextPreValue = 0;
+	// Stores the lowest value between the pre value of a node u and the pre value of an ancestor w of u and there is a back-edge from some descendant of u to w.
+	// Used by DFS to determine articulation nodes
+	private Map<String, Integer> lowMap = null;
+	//TODO private Map<String, Integer> postMap = null;
+	
+	
+	/*
+	 *  Articulation nodes set (used by DFS)
+	 */
+	private Set<Node> articulationNodes = null;
+	
+	
+	/*
+	 *  Connected Components structures (used by DFS)
+	 */
 	int ccNumber = -1; // only valid after the graph is traversed by a complete DFS or BFS
 	private Vector<Graph> CCs = null;
 	
-	// Shortest paths structures (used by BFS)
-	Map<Node,Node> parents = null;
 	
-	// Returns the number of connected components of the graph computed by a complete traversal or -1 if the graph has never been traversed
+	/*
+	 *  Parents map (used by BFS and DFS)
+	 *  Keys are the children and each value is their corresponding parent in a DFS or BFS tree.
+	 *  Used to determine shortest paths in BFS and to determine articulation points in DFS.
+	 */
+	Map<Node,Node> parentsMap = null;
+	
+	
+	// Returns the number of connected components of the graph computed by a complete DFS traversal or -1 if the graph has never been traversed by DFS
 	public int getNumberOfCCs() {
 		if ( !this.visitedSet.isEmpty() ) {
 			return this.ccNumber+1;
 		} else return -1;
 	}
 	
-	// Returns the connected components of the graph computed by a complete traversal (null if the graph has never been traversed)
+	// Returns the connected components of the graph computed by a complete DFS traversal (null if the graph has never been traversed by DFS)
 	public Vector<Graph> getCCs() {
 		return this.CCs;
+	}
+	
+	// Returns the number of articulation nodes of the graph computed by a complete DFS traversal (-1 if the graph has never been traversed by DFS)
+	public int getNumberOfArticulationNodes() {
+		int nArtNodes = -1;
+		if( this.articulationNodes != null ) {
+			nArtNodes = this.articulationNodes.size();
+		}
+		
+		return nArtNodes;
+	}
+	
+	// Returns the set of articulation nodes of the graph computed by a complete DFS traversal (null if the graph has never been traversed by DFS)
+	public Set<Node> getArticulationNodes() {
+		return this.articulationNodes;
 	}
 	
 	// Produces true if given node has already been visited in a graph traversal
@@ -192,6 +236,50 @@ public class Graph {
 		this.visitedSet.add(node);
 	}
 	
+	private void setPreValue(Node node) {
+		String id = node.getId();
+		this.preMap.put(id, this.nextPreValue);
+		this.lowMap.put(id, this.nextPreValue++);
+	}
+	
+	private int getPreValue(Node node) {
+		String id = node.getId();
+		int preValue = this.preMap.get(id);
+		return preValue;
+	}
+	
+	private boolean isDFSRoot(Node node) {
+		// A node in a DFS tree is only a root iff it doesn't have a parent
+		Node parent = this.parentsMap.get(node);
+		return (parent == null);
+	}
+	
+	/* 
+	 * Used in DFS to determine articulation nodes
+	 * TODO: O(n)?
+	 */
+	private boolean hasMoreThanOneTreeChild(Node node) {
+		Collection<Node> parents = this.parentsMap.values();
+		
+		// Iterate through the parents' collection. If it finds 'node' more than once, return true; false otherwise.
+		// In other words, if 'node' is parent to 2 or more other nodes, it has more than one child.
+		Node parent = null;
+		int childrenCount = 0;
+		for( Iterator<Node> itParents = parents.iterator(); itParents.hasNext(); ) {
+			parent = itParents.next();
+			String parentId = parent.getId();
+			String nodeId = node.getId();
+			if( parentId.equals(nodeId) ) {
+				childrenCount++;
+				if( childrenCount > 1 ) {
+					return true;
+				}
+			}
+		}
+		
+		return false;
+	}
+	
 	// Performs a Depth-First Search (DFS) in the graph and returns the DFS-Forest.
 	// The DFS-Forest produced is as a List of other Graphs, which are the disconnected DFS-Trees produced by the traversal
 	public List<Graph> dfs(Node start) {
@@ -199,6 +287,11 @@ public class Graph {
 		//Initialize and reset traversal control structures:
 		List<Graph> dfsForest = new LinkedList<Graph>();
 		this.visitedSet = new HashSet<Node>();
+		this.preMap = new HashMap<String, Integer>();
+		this.lowMap = new HashMap<String, Integer>();
+		this.nextPreValue = 1;
+		//this.postMap = new HashMap<String, Integer>();
+		this.parentsMap = new HashMap<Node, Node>();
 		this.ccNumber = -1;
 		this.CCs = new Vector<Graph>();
 
@@ -217,12 +310,46 @@ public class Graph {
 				dfsForest.add(dfsTree);
 			}
 		}
+		
+		/************* Articulation nodes ****************/
+		this.articulationNodes = new HashSet<Node>();
+		Graph tree = null;
+		for( Iterator<Graph> itForest = dfsForest.iterator(); itForest.hasNext();  ) {
+			tree = itForest.next();
+			Set<Node> treeNodes = tree.getNodes();
+			Node treeNode = null;
+			for( Iterator<Node> itTree = treeNodes.iterator(); itTree.hasNext(); ) {
+				treeNode = itTree.next();
+				
+				/******************* TODO *************************************/
+				// treeNode == u
+				// ?? == v    ??
+				String treeNodeId = treeNode.getId();
+				int lowU = this.lowMap.get(treeNodeId);
+				// TODO v should be u's first neighbor to be visited by DFS... How to determine that here??? Is it really here that I should be calculating this???
+				// Maybe use this.nodesMap???
+				int lowV = 0; //this.lowMap.get(""); 
+				int lowest = Math.min(lowU, lowV);
+				this.lowMap.put(treeNodeId, lowest);
+				 /****************************** TODO **************************/
+				
+				if( this.isDFSRoot(treeNode) && this.hasMoreThanOneTreeChild(treeNode) ) {
+					// If treeNode is root and has more than one child, then it is an articulation node.
+					// See references/articulation-points-or-cut-vertices-in-a-graph.pdf
+					this.articulationNodes.add(treeNode);
+				}
+			}
+		}
+		/***************************************************/
+		
 		return dfsForest;
 	}
 	
 	private void dfsVisit(Node node, Graph dfsTree) {		
 		this.markVisited(node);
+		this.setPreValue(node);
 		dfsTree.addNode(node);
+		
 		for (Iterator<Node> neighbors = this.getNeighbors(node).iterator(); neighbors.hasNext();  ) {
 			Node next = neighbors.next();
 			// Always insert edge 'node'-'next' into current Connected Component
@@ -231,6 +358,9 @@ public class Graph {
 			if( !visited ) {
 				// Insert edge 'node'-'next' into dfsTree
 				dfsTree.addEdge(node, next);
+				
+				//Add node as next's parent to the parents map
+				this.parentsMap.put(next, node);
 				
 				// Visit next node
 				dfsVisit(next, dfsTree);
@@ -244,7 +374,7 @@ public class Graph {
 		if (start == null || !this.containsNode(start)) return null;
 		//Initialize and reset traversal control structures:
 		this.visitedSet = new HashSet<Node>();
-		this.parents = new HashMap<Node,Node>();
+		this.parentsMap = new HashMap<Node,Node>();
 		Map<Node,Integer> distances = new HashMap<Node,Integer>();
 		Vector<Set<Node>> bfsLevels = new Vector<Set<Node>>();
 		Deque<Node> queue = new LinkedList<Node>();
@@ -270,7 +400,7 @@ public class Graph {
 						Node v = neighbors.next();
 						boolean explored = isVisited(v);
 						if( !explored ) {
-							this.parents.put(v,u);
+							this.parentsMap.put(v,u); // v's parent is u
 							distances.put(v,distances.get(u)+1);
 							if (bfsLevels.size()<distances.get(v)+1) bfsLevels.add(new HashSet<Node>()); // initializes a new level
 							level = bfsLevels.get(distances.get(v));
@@ -291,15 +421,15 @@ public class Graph {
 		if (start == null || !this.containsNode(start) ||     // node "start" doesn't belong to the graph
 				end == null || !this.containsNode(end) )      // node "end" doesn't belong to the graph
 			return null;
-		if (this.parents == null ||                                 // BFS has not been executed yet 
-				((start != end)&&!this.parents.containsKey(end)) )  // or it has not started from node "start"
+		if (this.parentsMap == null ||                                 // BFS has not been executed yet 
+				((start != end)&&!this.parentsMap.containsKey(end)) )  // or it has not started from node "start"
 			this.bfs(start);                                        // Note: if node "end" is not reachable from node "start" will be checked at the end!
 		// Builds the result list going backwards through node parents list
 		LinkedList<Node> result = new LinkedList<Node>();
 		Node node = end;
 		while ( node != null ) {
 			result.push(node);
-			node = this.parents.get(node);
+			node = this.parentsMap.get(node);
 		}
 		if ( result.getFirst() != start) return null; // there is no path from "start" to "end" --> node "end" is not reachable from node "start"!
 		else return result;
