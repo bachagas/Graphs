@@ -16,7 +16,7 @@ local.properties
 .settings/
 .loadpath
 # User manually added:
-tests/GameTest.out
+test/GameTest.out
 
 # External tool builders
 .externalToolBuilders/
