@@ -360,7 +360,7 @@ public class Graph {
 				// Visit next node
 				dfsVisit(next, dfsTree);
 				
-				/************* Articulation nodes ****************/
+			/************* Articulation nodes ****************/
 				// node == u
 				// next == v
 				// See references/articulation-points-or-cut-vertices-in-a-graph.pdf
@@ -380,7 +380,6 @@ public class Graph {
 				if( !this.isDFSRoot(node) && lowV >= preValueU ) {
 					this.articulationNodes.add(node);
 				}
-				/*************************************************/
 			}
 			else {
 				Node parentU = this.parentsMap.get(node);
@@ -394,6 +393,8 @@ public class Graph {
 					}
 				}
 			}
+			/*************************************************/
+
 		}
 	}
 	

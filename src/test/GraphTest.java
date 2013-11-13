@@ -50,6 +50,20 @@ public class GraphTest {
 				Graph dfsTree = it2.next();
 				dfsTree.println();
 			}
+			
+			System.out.println("Articulation nodes:");
+			Set<Node> articulationNodes = myGraph.getArticulationNodes();
+			if( articulationNodes.isEmpty() ) {
+				System.out.println("There are no articulation nodes.");
+			}
+			else {
+				System.out.print("{");
+				for( Iterator<Node> itNodes = articulationNodes.iterator(); itNodes.hasNext(); ) {
+					Node next = itNodes.next();
+					System.out.print(next.getId() + ", ");
+				}
+				System.out.println("}");
+			}
 		}
 		System.out.println("Found " + myGraph.getNumberOfCCs() + " connected components:");
 		for (Iterator<Graph> it = myGraph.getCCs().iterator(); it.hasNext();  ) {
