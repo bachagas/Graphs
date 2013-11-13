@@ -81,6 +81,26 @@ public class GameTest {
 			System.out.println(CCs.next());
 		System.out.println();
 		
+		//Tarefa 3:
+		System.out.println("************************ Tarefa 3 ************************");
+		System.out.println("> Extracting articulation nodes:");
+		Set<Node> articulationNodes = game.getArticulationNodes();
+		if( articulationNodes.isEmpty() ) {
+			System.out.print("There are no articulation nodes in the graph.");
+		}
+		else {
+			int i = 1;
+			for( Iterator<Node> it = articulationNodes.iterator(); it.hasNext(); ) {
+				Node next = it.next();
+				System.out.println(i + " - '" + next.getId() + "'");
+				i++;
+			}
+			System.out.println();
+			System.out.println("There is a total of " + game.getNumberOfArticulationNodes() + " articulation nodes in the graph.");
+		}
+		System.out.println();
+		System.out.println();
+		
 		// Tarefa 2:
 		System.out.println("************************ Tarefa 2 ************************");
 		startTime = new Date();

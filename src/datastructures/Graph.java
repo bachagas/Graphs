@@ -239,7 +239,8 @@ public class Graph {
 	private void setPreValue(Node node) {
 		String id = node.getId();
 		this.preMap.put(id, this.nextPreValue);
-		this.lowMap.put(id, this.nextPreValue++);
+		this.lowMap.put(id, this.nextPreValue);
+		this.nextPreValue++;
 	}
 	
 	private int getPreValue(Node node) {
@@ -289,6 +290,7 @@ public class Graph {
 		this.visitedSet = new HashSet<Node>();
 		this.preMap = new HashMap<String, Integer>();
 		this.lowMap = new HashMap<String, Integer>();
+		this.articulationNodes = new HashSet<Node>();
 		this.nextPreValue = 1;
 		//this.postMap = new HashMap<String, Integer>();
 		this.parentsMap = new HashMap<Node, Node>();
@@ -312,6 +314,7 @@ public class Graph {
 		}
 		
 		/************* Articulation nodes ****************/
+		/*
 		this.articulationNodes = new HashSet<Node>();
 		Graph tree = null;
 		for( Iterator<Graph> itForest = dfsForest.iterator(); itForest.hasNext();  ) {
@@ -321,18 +324,6 @@ public class Graph {
 			for( Iterator<Node> itTree = treeNodes.iterator(); itTree.hasNext(); ) {
 				treeNode = itTree.next();
 				
-				/******************* TODO *************************************/
-				// treeNode == u
-				// ?? == v    ??
-				String treeNodeId = treeNode.getId();
-				int lowU = this.lowMap.get(treeNodeId);
-				// TODO v should be u's first neighbor to be visited by DFS... How to determine that here??? Is it really here that I should be calculating this???
-				// Maybe use this.nodesMap???
-				int lowV = 0; //this.lowMap.get(""); 
-				int lowest = Math.min(lowU, lowV);
-				this.lowMap.put(treeNodeId, lowest);
-				 /****************************** TODO **************************/
-				
 				if( this.isDFSRoot(treeNode) && this.hasMoreThanOneTreeChild(treeNode) ) {
 					// If treeNode is root and has more than one child, then it is an articulation node.
 					// See references/articulation-points-or-cut-vertices-in-a-graph.pdf
@@ -340,6 +331,7 @@ public class Graph {
 				}
 			}
 		}
+		*/
 		/***************************************************/
 		
 		return dfsForest;
@@ -355,6 +347,9 @@ public class Graph {
 			// Always insert edge 'node'-'next' into current Connected Component
 			this.CCs.get(this.ccNumber).addEdge(node,next);
 			boolean visited = this.isVisited(next);
+			
+			String nodeId = node.getId();
+			String nextId = next.getId();
 			if( !visited ) {
 				// Insert edge 'node'-'next' into dfsTree
 				dfsTree.addEdge(node, next);
@@ -364,6 +359,40 @@ public class Graph {
 				
 				// Visit next node
 				dfsVisit(next, dfsTree);
+				
+				/************* Articulation nodes ****************/
+				// node == u
+				// next == v
+				// See references/articulation-points-or-cut-vertices-in-a-graph.pdf
+				
+				int lowU = this.lowMap.get(nodeId);
+				int lowV = this.lowMap.get(nextId); 
+				int lowest = Math.min(lowU, lowV);
+				this.lowMap.put(nodeId, lowest);
+				
+				if( this.isDFSRoot(node) && this.hasMoreThanOneTreeChild(node) ) {
+					// If treeNode is root and has more than one child, then it is an articulation node.
+					// See references/articulation-points-or-cut-vertices-in-a-graph.pdf
+					this.articulationNodes.add(node);
+				}
+				
+				int preValueU = this.getPreValue(node);
+				if( !this.isDFSRoot(node) && lowV >= preValueU ) {
+					this.articulationNodes.add(node);
+				}
+				/*************************************************/
+			}
+			else {
+				Node parentU = this.parentsMap.get(node);
+				if( parentU != null ) {
+					String parentUId = parentU.getId();
+					if( !nextId.equals(parentUId) ) {
+						int lowU = this.lowMap.get(nodeId);
+						int preValueV = this.getPreValue(next);
+						int lowest = Math.min(lowU, preValueV);
+						this.lowMap.put(nodeId, lowest);
+					}
+				}
 			}
 		}
 	}
